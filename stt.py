@@ -135,6 +135,22 @@ def request_stream(
         yield speech.StreamingRecognizeRequest(audio_content=chunk)
 
 
+def final_transcripts(
+    responses: Iterable[speech.StreamingRecognizeResponse],
+) -> Generator[str, None, None]:
+    for response in responses:
+        if not response.results:
+            continue
+
+        result = response.results[0]
+        if not result.alternatives or not result.is_final:
+            continue
+
+        transcript = result.alternatives[0].transcript.strip()
+        if transcript:
+            yield transcript
+
+
 def print_responses(responses: Iterable[speech.StreamingRecognizeResponse]) -> None:
     previous_interim_length = 0
 
@@ -162,12 +178,9 @@ def print_responses(responses: Iterable[speech.StreamingRecognizeResponse]) -> N
         previous_interim_length = len(transcript)
 
 
-def run_realtime_transcription(settings: Settings) -> None:
+def stream_realtime_transcripts(settings: Settings) -> Generator[str, None, None]:
     client = speech.SpeechClient()
     streaming_config = build_streaming_config(settings)
-
-    print("Listening for Vietnamese speech. Press Ctrl+C to stop.")
-    print(f"Language: {settings.language_code}, model: {settings.model}")
 
     with MicrophoneStream(
         rate=settings.sample_rate,
@@ -180,12 +193,20 @@ def run_realtime_transcription(settings: Settings) -> None:
 
             try:
                 responses = client.streaming_recognize(streaming_config, requests)
-                print_responses(responses)
+                yield from final_transcripts(responses)
             except google_exceptions.OutOfRange:
                 continue
             except google_exceptions.GoogleAPICallError as exc:
                 print(f"\nGoogle Speech-to-Text error: {exc}", file=sys.stderr)
                 raise
+
+
+def run_realtime_transcription(settings: Settings) -> None:
+    print("Listening for Vietnamese speech. Press Ctrl+C to stop.")
+    print(f"Language: {settings.language_code}, model: {settings.model}")
+
+    for transcript in stream_realtime_transcripts(settings):
+        print(transcript, flush=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -240,14 +261,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-
-    if args.list_devices:
-        list_input_devices()
-        return
-
-    settings = Settings(
+def settings_from_args(args: argparse.Namespace) -> Settings:
+    return Settings(
         language_code=args.language_code,
         model=args.model,
         sample_rate=args.sample_rate,
@@ -256,6 +271,16 @@ def main() -> None:
         streaming_limit_seconds=args.streaming_limit,
         interim_results=not args.no_interim,
     )
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.list_devices:
+        list_input_devices()
+        return
+
+    settings = settings_from_args(args)
 
     try:
         run_realtime_transcription(settings)
