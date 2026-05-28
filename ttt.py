@@ -103,7 +103,7 @@ def answer_question(
 
 
 try:
-    # Import hàm tts từ file app.py của thư mục viet-tts
+    # import the tts function from app.py if it exists, otherwise set to None
     from app import tts_fpt_ai_v5
 except ImportError:
     print("The app.py file could not be found. Pls check the folder path again!")
