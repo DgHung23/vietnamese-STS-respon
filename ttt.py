@@ -3,6 +3,7 @@ import os
 import urllib.error
 import urllib.request
 from typing import Any, Optional
+import sys
 
 try:
     from dotenv import load_dotenv
@@ -14,7 +15,7 @@ if load_dotenv is not None:
     load_dotenv()
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "PUT_YOUR_GEMINI_API_KEY_HERE")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -57,8 +58,8 @@ def answer_question(
         return "Không rõ câu hỏi, vui lòng hỏi lại."
 
     key = api_key or GEMINI_API_KEY
-    if not key or key == "PUT_YOUR_GEMINI_API_KEY_HERE":
-        raise GeminiError("Missing Gemini API key. Set GEMINI_API_KEY in ttt.py or environment.")
+    if not key:
+        raise GeminiError("Missing Gemini API key. Set GEMINI_API_KEY in environment.")
 
     payload = {
         "system_instruction": {
@@ -99,9 +100,29 @@ def answer_question(
     return _extract_answer(data)
 
 
+
+
+try:
+    # Import hàm tts từ file app.py của thư mục viet-tts
+    from app import tts_fpt_ai_v5
+except ImportError:
+    print("The app.py file could not be found. Pls check the folder path again!")
+    tts_fpt_ai_v5 = None
+
+
 def main() -> None:
+    # type question from user input
     question = input("Question: ")
-    print(answer_question(question))
+    
+    # send question to Gemini and get the answer
+    answer = answer_question(question)
+    print(f"Answer: {answer}")
+    
+    # if have tts function and an answer, convert the answer to speech
+    if tts_fpt_ai_v5 and answer:
+        print("\nConverting answer to speech, pls wait...")
+        # run tts function with the answer text to get audio output
+        tts_fpt_ai_v5(text_input=answer)
 
 
 if __name__ == "__main__":
