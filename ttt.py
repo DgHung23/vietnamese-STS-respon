@@ -6,6 +6,12 @@ from typing import Any, Optional
 import sys
 
 try:
+    import rag  # Import file rag.py làm một module xử lý dữ liệu nền
+except ImportError:
+    print("Error: Could not find 'rag.py' in the same directory. Please place them together.")
+    sys.exit(1)
+
+try:
     from dotenv import load_dotenv
 except ImportError:
     load_dotenv = None
@@ -15,11 +21,11 @@ if load_dotenv is not None:
     load_dotenv()
 
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+"""GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-)
+)"""
 
 DEFAULT_SYSTEM_PROMPT = (
     "Bạn là một AI trả lời câu hỏi sau khi STT. "
@@ -29,8 +35,8 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 
-class GeminiError(RuntimeError):
-    """Raised when Gemini cannot return a usable answer."""
+"""class GeminiError(RuntimeError):
+    Raised when Gemini cannot return a usable answer.
 
 
 def _extract_answer(data: dict[str, Any]) -> str:
@@ -44,10 +50,10 @@ def _extract_answer(data: dict[str, Any]) -> str:
     if not answer:
         raise GeminiError("Gemini response has no text answer.")
 
-    return answer
+    return answer"""
 
 
-def answer_question(
+"""def answer_question(
     question_text: str,
     system_prompt: str = DEFAULT_SYSTEM_PROMPT,
     api_key: Optional[str] = None,
@@ -97,7 +103,7 @@ def answer_question(
     except json.JSONDecodeError as exc:
         raise GeminiError("Gemini API returned invalid JSON.") from exc
 
-    return _extract_answer(data)
+    return _extract_answer(data)"""
 
 
 
@@ -115,7 +121,8 @@ def main() -> None:
     question = input("Question: ")
     
     # send question to Gemini and get the answer
-    answer = answer_question(question)
+    # answer = answer_question(question) maybe not need
+    answer = rag.get_bot_response(question)
     print(f"Answer: {answer}")
     
     # if have tts function and an answer, convert the answer to speech

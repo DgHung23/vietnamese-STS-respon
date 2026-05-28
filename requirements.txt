@@ -1,3 +1,14 @@
 google-cloud-speech>=2.39.0
 PyAudio>=0.2.14
 python-dotenv>=1.0.0
+pandas==2.2.2
+numpy==1.26.4
+faiss-cpu==1.8.0
+sentence-transformers==3.0.1
+torch==2.3.1
+transformers==4.42.4
+huggingface-hub==0.24.0
+scikit-learn==1.5.1
+scipy==1.14.0
+tf-keras==2.16.0
+
