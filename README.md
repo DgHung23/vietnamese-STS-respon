@@ -1,20 +1,22 @@
 # Vietnamese STT Response
 
-This application listens to Vietnamese speech from a microphone, converts the speech to text with Google Cloud Speech-to-Text, then sends the transcript to Gemini to generate a short Vietnamese response.
+This application listens to Vietnamese speech from a microphone, converts the speech to text with Google Cloud Speech-to-Text, answers through a hybrid FAQ RAG + Gemini flow, then reads the answer aloud with FPT.AI Text-to-Speech.
 
 In short, the flow is:
 
 ```text
-Microphone -> Google Speech-to-Text -> Transcript -> Gemini -> Response in the terminal
+Microphone -> Google Speech-to-Text -> Transcript -> FAQ RAG -> Gemini fallback -> FPT.AI TTS
 ```
 
 ## Key Features
 
 - Real-time Vietnamese speech recognition.
 - Automatically captures the final transcript after the user finishes speaking a sentence or phrase.
-- Sends the transcript to Gemini for a response.
+- Searches `faq.csv` first and uses the FAQ answer when the match is confident.
+- Falls back to Gemini when no FAQ row is similar enough.
+- Reads the final answer aloud with FPT.AI Text-to-Speech.
 - Can list available input microphones and select a specific device.
-- Supports configuring the language, STT model, sample rate, streaming session duration, and Gemini model through environment variables or command-line arguments.
+- Supports configuring STT, RAG, Gemini fallback, and TTS through environment variables or command-line arguments.
 
 ## Prerequisites
 
@@ -24,7 +26,8 @@ Prepare the following before running the application:
 - A working microphone on your machine.
 - A Google Cloud account with the Speech-to-Text API enabled.
 - Google Cloud Application Default Credentials.
-- A Gemini API key.
+- A Gemini API key for questions outside the FAQ scope.
+- An FPT.AI API key for Text-to-Speech.
 - The Python packages listed in `requirements.txt`.
 
 ## Installation
@@ -58,6 +61,9 @@ The application uses these libraries:
 - `google-cloud-speech`: calls Google Cloud Speech-to-Text.
 - `PyAudio`: reads audio from the microphone.
 - `python-dotenv`: automatically loads environment variables from a `.env` file.
+- `sentence-transformers`, `faiss-cpu`, `pandas`: build and search the FAQ RAG index.
+- `google-genai`: calls Gemini.
+- `requests`, `pydub`, `simpleaudio`: call FPT.AI TTS and play the returned audio.
 
 If installing `PyAudio` fails, the usual cause is a missing system audio library.
 
@@ -97,9 +103,9 @@ gcloud config set project YOUR_PROJECT_ID
 
 Make sure the selected project has the Speech-to-Text API enabled.
 
-## Gemini Configuration
+## Gemini, RAG, and TTS Configuration
 
-The application reads the Gemini API key from the `GEMINI_API_KEY` environment variable. The most convenient approach is to create a `.env` file based on `.env.example`, then fill in your real key.
+The application reads keys and pipeline settings from environment variables. The most convenient approach is to create a `.env` file based on `.env.example`, then fill in your real keys.
 
 Example configuration:
 
@@ -109,6 +115,13 @@ STT_MODEL=latest_long
 STT_SAMPLE_RATE=16000
 GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 GEMINI_MODEL=gemini-2.5-flash
+FAQ_PATH=faq.csv
+RAG_THRESHOLD=0.72
+FPT_API_KEY=YOUR_FPT_AI_API_KEY
+FPT_TTS_VOICE=banmai
+FPT_TTS_SPEED=1
+FPT_TTS_POLL_DELAY=2
+FPT_TTS_MAX_WAIT=30
 ```
 
 Do not share or commit a real API key to Git.
@@ -124,6 +137,13 @@ Do not share or commit a real API key to Git.
 | `STT_DEVICE_INDEX` | Not set | Index of the microphone to use. |
 | `GEMINI_API_KEY` | None | API key used to call Gemini. |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model used to generate responses. |
+| `FAQ_PATH` | `faq.csv` | FAQ CSV used by the RAG retriever. |
+| `RAG_THRESHOLD` | `0.72` | Minimum similarity score required to use the FAQ answer. |
+| `FPT_API_KEY` | None | API key used to call FPT.AI Text-to-Speech. |
+| `FPT_TTS_VOICE` | `banmai` | FPT.AI voice name. |
+| `FPT_TTS_SPEED` | `1` | FPT.AI voice speed. |
+| `FPT_TTS_POLL_DELAY` | `2` | Seconds to wait between audio download attempts. |
+| `FPT_TTS_MAX_WAIT` | `30` | Maximum seconds to wait for the async audio file. |
 
 ## Running the Full Application
 
@@ -144,10 +164,16 @@ Speak into the microphone. When Google Speech-to-Text returns a final transcript
 
 ```text
 STT: the content you just said
-AI: the response from Gemini
+AI: the answer from FAQ RAG or Gemini fallback
 ```
 
-Stop the program with `Ctrl+C`.
+If TTS is configured, the same answer is also sent to FPT.AI and played through the speaker. Stop the program with `Ctrl+C`.
+
+To test the RAG/LLM part without a microphone or speaker:
+
+```bash
+python main.py --text "Greenwich Vietnam là gì?" --no-tts --once --rag-debug
+```
 
 ## Selecting an Input Microphone
 
@@ -160,7 +186,7 @@ python main.py --list-devices
 Or:
 
 ```bash
-python stt.py --list-devices
+python speech_to_text.py --list-devices
 ```
 
 The output will look like:
@@ -185,7 +211,7 @@ STT_DEVICE_INDEX=1
 
 ## Command-Line Arguments
 
-`main.py` and `stt.py` share the same STT configuration arguments:
+`main.py` and `speech_to_text.py` share the same STT configuration arguments:
 
 ```bash
 python main.py --language-code vi-VN --model latest_long --sample-rate 16000
@@ -203,30 +229,22 @@ Available arguments:
 | `--no-interim` | Does not request interim results from the API. |
 | `--list-devices` | Lists input microphones and exits. |
 
-Note: the main flow only processes completed transcripts marked as `is_final`. Interim results can be requested in the API configuration, but Gemini responses are generated only after a final transcript is available.
+Note: the main flow only processes completed transcripts marked as `is_final`. Interim results can be requested in the API configuration, but answers are generated only after a final transcript is available.
 
 ## Running Individual Parts
 
 ### Test Speech-to-Text Only
 
 ```bash
-python stt.py
+python speech_to_text.py
 ```
 
-This mode only listens to the microphone and prints transcripts to the terminal. It does not call Gemini.
+This mode only listens to the microphone and prints transcripts to the terminal. It does not call RAG, Gemini, or TTS.
 
-### Test Gemini Only
-
-```bash
-python test_ttt_only.py
-```
-
-Enter a question in the terminal. The program sends the question to Gemini and prints the response.
-
-You can also run it directly:
+### Test RAG/LLM Only
 
 ```bash
-python ttt.py
+python response_engine.py --question "Greenwich Vietnam là gì?" --rag-debug
 ```
 
 ## How the Program Works
@@ -238,11 +256,13 @@ This is the main application entry point. It:
 1. Reads command-line arguments and environment variables.
 2. If `--list-devices` is provided, prints the microphone list and exits.
 3. Opens the microphone listening stream.
-4. For each final transcript received from STT, sends the transcript to Gemini.
-5. Prints both the transcript and the response to the terminal.
-6. If Gemini fails, prints the error and continues listening for the next sentence.
+4. For each final transcript received from STT, sends the transcript to `response_engine.py`.
+5. `response_engine.py` checks the FAQ index first, then calls Gemini only if no FAQ match is confident enough.
+6. Prints both the transcript and the response to the terminal.
+7. Sends the answer to `text_to_speech.py` for FPT.AI TTS unless `--no-tts` is used.
+8. If RAG, Gemini, or TTS fails, prints the error and continues listening for the next sentence.
 
-### `stt.py`
+### `speech_to_text.py`
 
 This file handles the full Speech-to-Text flow:
 
@@ -259,20 +279,23 @@ Important values:
 - `CHUNK_SIZE = SAMPLE_RATE / 10`
 - `STREAMING_LIMIT_SECONDS = 240`
 
-### `ttt.py`
+### `response_engine.py`
 
-This file calls Gemini:
+This file handles the hybrid answer flow:
 
-- Reads `GEMINI_API_KEY` and `GEMINI_MODEL` from the environment.
-- Creates a request to the Gemini `generateContent` API endpoint.
-- Sends the user's transcript to Gemini.
-- Uses a system prompt that asks Gemini to answer briefly in Vietnamese.
-- If the question is unclear, asks Gemini to reply that the question is unclear and should be asked again.
-- If the API returns an error, raises `GeminiError` so `main.py` can handle it.
+- Loads and cleans `faq.csv`.
+- Embeds FAQ questions with `BAAI/bge-m3`.
+- Searches similar questions with FAISS.
+- Returns the CSV answer when the score is at least `RAG_THRESHOLD`.
+- Calls Gemini as fallback when no FAQ match is found.
 
-### `test_ttt_only.py`
+### `text_to_speech.py`
 
-This small file tests the Gemini part without requiring a microphone or Google Speech-to-Text.
+This file handles Text-to-Speech:
+
+- Reads `FPT_API_KEY`, `FPT_TTS_VOICE`, and `FPT_TTS_SPEED` from the environment.
+- Sends the final answer text to FPT.AI TTS.
+- Downloads the generated MP3 and plays it locally.
 
 ## Common Usage Examples
 
@@ -306,10 +329,10 @@ Check the microphone list:
 python main.py --list-devices
 ```
 
-Test Gemini only:
+Test RAG/Gemini only:
 
 ```bash
-python test_ttt_only.py
+python response_engine.py --question "Greenwich Vietnam là gì?" --rag-debug
 ```
 
 ## Troubleshooting

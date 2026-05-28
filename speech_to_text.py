@@ -21,6 +21,12 @@ CHUNK_SIZE = int(SAMPLE_RATE / 10)
 STREAMING_LIMIT_SECONDS = 240
 
 
+def configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 @dataclass
 class Settings:
     language_code: str
@@ -209,13 +215,7 @@ def run_realtime_transcription(settings: Settings) -> None:
         print(transcript, flush=True)
 
 
-def parse_args() -> argparse.Namespace:
-    if load_dotenv is not None:
-        load_dotenv()
-
-    parser = argparse.ArgumentParser(
-        description="Realtime Vietnamese speech-to-text using Google Cloud Speech-to-Text."
-    )
+def add_stt_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.add_argument(
         "--language-code",
         default=os.getenv("STT_LANGUAGE_CODE", "vi-VN"),
@@ -258,6 +258,21 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="List microphone input devices and exit.",
     )
+    return parser
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Realtime Vietnamese speech-to-text using Google Cloud Speech-to-Text."
+    )
+    return add_stt_arguments(parser)
+
+
+def parse_args() -> argparse.Namespace:
+    if load_dotenv is not None:
+        load_dotenv()
+
+    parser = build_arg_parser()
     return parser.parse_args()
 
 
@@ -274,6 +289,7 @@ def settings_from_args(args: argparse.Namespace) -> Settings:
 
 
 def main() -> None:
+    configure_stdio()
     args = parse_args()
 
     if args.list_devices:
