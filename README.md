@@ -1,107 +1,107 @@
 # Vietnamese STT Response
 
-Ứng dụng này nghe giọng nói tiếng Việt từ microphone, chuyển giọng nói thành văn bản bằng Google Cloud Speech-to-Text, sau đó gửi văn bản đó đến Gemini để tạo câu trả lời ngắn gọn bằng tiếng Việt.
+This application listens to Vietnamese speech from a microphone, converts the speech to text with Google Cloud Speech-to-Text, then sends the transcript to Gemini to generate a short Vietnamese response.
 
-Nói ngắn gọn, luồng hoạt động là:
+In short, the flow is:
 
 ```text
-Microphone -> Google Speech-to-Text -> Transcript -> Gemini -> Câu trả lời trên terminal
+Microphone -> Google Speech-to-Text -> Transcript -> Gemini -> Response in the terminal
 ```
 
-## Tính năng chính
+## Key Features
 
-- Nhận diện giọng nói tiếng Việt theo thời gian thực.
-- Tự động lấy transcript cuối cùng sau khi người dùng nói xong một câu/đoạn.
-- Gửi transcript sang Gemini để trả lời.
-- Có thể liệt kê microphone đầu vào và chọn thiết bị cụ thể.
-- Có thể cấu hình ngôn ngữ, model STT, sample rate, thời lượng mỗi phiên streaming và model Gemini bằng biến môi trường hoặc tham số dòng lệnh.
+- Real-time Vietnamese speech recognition.
+- Automatically captures the final transcript after the user finishes speaking a sentence or phrase.
+- Sends the transcript to Gemini for a response.
+- Can list available input microphones and select a specific device.
+- Supports configuring the language, STT model, sample rate, streaming session duration, and Gemini model through environment variables or command-line arguments.
 
-## Yêu cầu trước khi chạy
+## Prerequisites
 
-Bạn cần chuẩn bị các thành phần sau:
+Prepare the following before running the application:
 
-- Python 3.10 hoặc mới hơn.
-- Microphone hoạt động được trên máy.
-- Tài khoản Google Cloud đã bật Speech-to-Text API.
+- Python 3.10 or newer.
+- A working microphone on your machine.
+- A Google Cloud account with the Speech-to-Text API enabled.
 - Google Cloud Application Default Credentials.
-- Gemini API key.
-- Các thư viện Python trong `requirements.txt`.
+- A Gemini API key.
+- The Python packages listed in `requirements.txt`.
 
-## Cài đặt
+## Installation
 
-### 1. Tạo môi trường Python
+### 1. Create a Python Environment
 
-Khuyến nghị dùng virtual environment để tránh lẫn thư viện với hệ thống.
+Using a virtual environment is recommended to avoid conflicts with system packages.
 
-Trên Windows PowerShell:
+On Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Trên macOS/Linux:
+On macOS/Linux:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Cài thư viện
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Các thư viện được dùng:
+The application uses these libraries:
 
-- `google-cloud-speech`: gọi Google Cloud Speech-to-Text.
-- `PyAudio`: đọc âm thanh từ microphone.
-- `python-dotenv`: tự động nạp biến môi trường từ file `.env`.
+- `google-cloud-speech`: calls Google Cloud Speech-to-Text.
+- `PyAudio`: reads audio from the microphone.
+- `python-dotenv`: automatically loads environment variables from a `.env` file.
 
-Nếu cài `PyAudio` bị lỗi, nguyên nhân thường là máy thiếu thư viện âm thanh nền.
+If installing `PyAudio` fails, the usual cause is a missing system audio library.
 
-Trên Windows, bạn có thể thử:
+On Windows, you can try:
 
 ```powershell
 pip install PyAudio
 ```
 
-Trên macOS, thường cần PortAudio:
+On macOS, PortAudio is usually required:
 
 ```bash
 brew install portaudio
 pip install PyAudio
 ```
 
-Trên Ubuntu/Debian:
+On Ubuntu/Debian:
 
 ```bash
 sudo apt-get install portaudio19-dev python3-pyaudio
 pip install PyAudio
 ```
 
-## Cấu hình Google Cloud Speech-to-Text
+## Google Cloud Speech-to-Text Configuration
 
-Ứng dụng dùng Application Default Credentials của Google Cloud. Nếu máy chưa đăng nhập ADC, chạy:
+The application uses Google Cloud Application Default Credentials. If ADC is not set up on your machine yet, run:
 
 ```bash
 gcloud auth application-default login
 ```
 
-Nếu cần chọn project Google Cloud:
+If you need to select a Google Cloud project:
 
 ```bash
 gcloud config set project YOUR_PROJECT_ID
 ```
 
-Hãy đảm bảo project đó đã bật Speech-to-Text API.
+Make sure the selected project has the Speech-to-Text API enabled.
 
-## Cấu hình Gemini
+## Gemini Configuration
 
-Ứng dụng đọc Gemini API key từ biến môi trường `GEMINI_API_KEY`. Cách thuận tiện nhất là tạo file `.env` dựa trên `.env.example`, sau đó điền key thật của bạn.
+The application reads the Gemini API key from the `GEMINI_API_KEY` environment variable. The most convenient approach is to create a `.env` file based on `.env.example`, then fill in your real key.
 
-Ví dụ cấu hình:
+Example configuration:
 
 ```env
 STT_LANGUAGE_CODE=vi-VN
@@ -111,59 +111,59 @@ GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Không nên chia sẻ hoặc commit API key thật lên Git.
+Do not share or commit a real API key to Git.
 
-## Các biến cấu hình
+## Configuration Variables
 
-| Biến môi trường | Mặc định | Ý nghĩa |
+| Environment variable | Default | Meaning |
 | --- | --- | --- |
-| `STT_LANGUAGE_CODE` | `vi-VN` | Mã ngôn ngữ dùng cho Google Speech-to-Text. |
-| `STT_MODEL` | `latest_long` | Model Speech-to-Text V1. |
-| `STT_SAMPLE_RATE` | `16000` | Tần số lấy mẫu microphone, đơn vị Hz. |
-| `STT_STREAMING_LIMIT` | `240` | Số giây tối đa cho mỗi phiên streaming trước khi kết nối lại. |
-| `STT_DEVICE_INDEX` | Không đặt | Chỉ số microphone muốn dùng. |
-| `GEMINI_API_KEY` | Không có | API key dùng để gọi Gemini. |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Model Gemini dùng để tạo câu trả lời. |
+| `STT_LANGUAGE_CODE` | `vi-VN` | Language code used for Google Speech-to-Text. |
+| `STT_MODEL` | `latest_long` | Speech-to-Text V1 model. |
+| `STT_SAMPLE_RATE` | `16000` | Microphone sample rate in Hz. |
+| `STT_STREAMING_LIMIT` | `240` | Maximum number of seconds for each streaming session before reconnecting. |
+| `STT_DEVICE_INDEX` | Not set | Index of the microphone to use. |
+| `GEMINI_API_KEY` | None | API key used to call Gemini. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model used to generate responses. |
 
-## Cách chạy ứng dụng đầy đủ
+## Running the Full Application
 
-Sau khi đã cài đặt và cấu hình xong:
+After installation and configuration:
 
 ```bash
 python main.py
 ```
 
-Khi chạy, terminal sẽ hiển thị:
+When running, the terminal shows:
 
 ```text
 Listening for Vietnamese speech. Press Ctrl+C to stop.
 Language: vi-VN, model: latest_long
 ```
 
-Bạn nói vào microphone. Khi Google Speech-to-Text trả về transcript cuối cùng, chương trình sẽ in:
+Speak into the microphone. When Google Speech-to-Text returns a final transcript, the program prints:
 
 ```text
-STT: nội dung bạn vừa nói
-AI: câu trả lời từ Gemini
+STT: the content you just said
+AI: the response from Gemini
 ```
 
-Dừng chương trình bằng `Ctrl+C`.
+Stop the program with `Ctrl+C`.
 
-## Chọn microphone đầu vào
+## Selecting an Input Microphone
 
-Nếu máy có nhiều microphone, trước tiên liệt kê danh sách thiết bị:
+If your machine has multiple microphones, first list the available devices:
 
 ```bash
 python main.py --list-devices
 ```
 
-Hoặc:
+Or:
 
 ```bash
 python stt.py --list-devices
 ```
 
-Kết quả sẽ có dạng:
+The output will look like:
 
 ```text
 Input devices:
@@ -171,89 +171,89 @@ Input devices:
   1: Headset ...
 ```
 
-Sau đó chạy với `--device-index`:
+Then run the application with `--device-index`:
 
 ```bash
 python main.py --device-index 1
 ```
 
-Hoặc đặt cố định trong `.env`:
+Or set it permanently in `.env`:
 
 ```env
 STT_DEVICE_INDEX=1
 ```
 
-## Các tham số dòng lệnh
+## Command-Line Arguments
 
-`main.py` và `stt.py` dùng chung bộ tham số cấu hình STT:
+`main.py` and `stt.py` share the same STT configuration arguments:
 
 ```bash
 python main.py --language-code vi-VN --model latest_long --sample-rate 16000
 ```
 
-Các tham số có sẵn:
+Available arguments:
 
-| Tham số | Ý nghĩa |
+| Argument | Meaning |
 | --- | --- |
-| `--language-code` | Mã ngôn ngữ BCP-47, mặc định là `vi-VN`. |
-| `--model` | Model Google Speech-to-Text V1, mặc định là `latest_long`. |
-| `--sample-rate` | Sample rate của microphone, mặc định là `16000`. |
-| `--device-index` | Chọn microphone theo index. |
-| `--streaming-limit` | Số giây mỗi phiên streaming trước khi tự kết nối lại. |
-| `--no-interim` | Không yêu cầu kết quả tạm thời từ API. |
-| `--list-devices` | Liệt kê microphone đầu vào rồi thoát. |
+| `--language-code` | BCP-47 language code. The default is `vi-VN`. |
+| `--model` | Google Speech-to-Text V1 model. The default is `latest_long`. |
+| `--sample-rate` | Microphone sample rate. The default is `16000`. |
+| `--device-index` | Selects a microphone by index. |
+| `--streaming-limit` | Number of seconds for each streaming session before automatically reconnecting. |
+| `--no-interim` | Does not request interim results from the API. |
+| `--list-devices` | Lists input microphones and exits. |
 
-Lưu ý: luồng chính hiện chỉ xử lý transcript đã hoàn tất (`is_final`). Kết quả tạm thời có thể được yêu cầu ở cấu hình API, nhưng câu trả lời Gemini chỉ được tạo khi transcript cuối cùng đã có.
+Note: the main flow only processes completed transcripts marked as `is_final`. Interim results can be requested in the API configuration, but Gemini responses are generated only after a final transcript is available.
 
-## Chạy riêng từng phần
+## Running Individual Parts
 
-### Chỉ kiểm tra Speech-to-Text
+### Test Speech-to-Text Only
 
 ```bash
 python stt.py
 ```
 
-Chế độ này chỉ nghe microphone và in transcript ra terminal, không gọi Gemini.
+This mode only listens to the microphone and prints transcripts to the terminal. It does not call Gemini.
 
-### Chỉ kiểm tra Gemini
+### Test Gemini Only
 
 ```bash
 python test_ttt_only.py
 ```
 
-Nhập câu hỏi vào terminal. Chương trình sẽ gửi câu đó sang Gemini và in câu trả lời.
+Enter a question in the terminal. The program sends the question to Gemini and prints the response.
 
-Bạn cũng có thể chạy trực tiếp:
+You can also run it directly:
 
 ```bash
 python ttt.py
 ```
 
-## Cách chương trình hoạt động
+## How the Program Works
 
 ### `main.py`
 
-Đây là điểm chạy chính của ứng dụng. File này:
+This is the main application entry point. It:
 
-1. Đọc tham số dòng lệnh và biến môi trường.
-2. Nếu có `--list-devices`, in danh sách microphone rồi thoát.
-3. Mở luồng nghe microphone.
-4. Với mỗi transcript cuối cùng nhận được từ STT, gửi transcript sang Gemini.
-5. In cả transcript và câu trả lời ra terminal.
-6. Nếu Gemini lỗi, in lỗi và tiếp tục nghe câu tiếp theo.
+1. Reads command-line arguments and environment variables.
+2. If `--list-devices` is provided, prints the microphone list and exits.
+3. Opens the microphone listening stream.
+4. For each final transcript received from STT, sends the transcript to Gemini.
+5. Prints both the transcript and the response to the terminal.
+6. If Gemini fails, prints the error and continues listening for the next sentence.
 
 ### `stt.py`
 
-File này phụ trách toàn bộ phần Speech-to-Text:
+This file handles the full Speech-to-Text flow:
 
-- Mở microphone bằng `PyAudio`.
-- Ghi âm mono 16-bit PCM.
-- Chia âm thanh thành các chunk nhỏ, mặc định 0.1 giây mỗi chunk.
-- Gửi stream âm thanh lên Google Cloud Speech-to-Text.
-- Lọc ra transcript cuối cùng, bỏ qua kết quả tạm thời.
-- Tự kết nối lại khi phiên streaming hết giới hạn thời gian.
+- Opens the microphone with `PyAudio`.
+- Records mono 16-bit PCM audio.
+- Splits audio into small chunks, with a default chunk length of 0.1 seconds.
+- Streams audio to Google Cloud Speech-to-Text.
+- Filters and yields final transcripts while ignoring interim results.
+- Automatically reconnects when the streaming session reaches its time limit.
 
-Các giá trị quan trọng:
+Important values:
 
 - `SAMPLE_RATE = 16000`
 - `CHUNK_SIZE = SAMPLE_RATE / 10`
@@ -261,128 +261,128 @@ Các giá trị quan trọng:
 
 ### `ttt.py`
 
-File này phụ trách gọi Gemini:
+This file calls Gemini:
 
-- Đọc `GEMINI_API_KEY` và `GEMINI_MODEL` từ môi trường.
-- Tạo request đến Gemini API endpoint `generateContent`.
-- Gửi transcript của người dùng vào Gemini.
-- Dùng system prompt để yêu cầu Gemini trả lời ngắn gọn bằng tiếng Việt.
-- Nếu câu hỏi không rõ, yêu cầu Gemini trả lời rằng không rõ câu hỏi và cần hỏi lại.
-- Nếu API trả lỗi, raise `GeminiError` để `main.py` xử lý.
+- Reads `GEMINI_API_KEY` and `GEMINI_MODEL` from the environment.
+- Creates a request to the Gemini `generateContent` API endpoint.
+- Sends the user's transcript to Gemini.
+- Uses a system prompt that asks Gemini to answer briefly in Vietnamese.
+- If the question is unclear, asks Gemini to reply that the question is unclear and should be asked again.
+- If the API returns an error, raises `GeminiError` so `main.py` can handle it.
 
 ### `test_ttt_only.py`
 
-File nhỏ dùng để kiểm tra phần Gemini mà không cần microphone hoặc Google Speech-to-Text.
+This small file tests the Gemini part without requiring a microphone or Google Speech-to-Text.
 
-## Ví dụ sử dụng thường gặp
+## Common Usage Examples
 
-Chạy ứng dụng với cấu hình mặc định:
+Run the application with the default configuration:
 
 ```bash
 python main.py
 ```
 
-Chạy với microphone số 2:
+Run with microphone number 2:
 
 ```bash
 python main.py --device-index 2
 ```
 
-Chạy với giới hạn streaming 120 giây:
+Run with a 120-second streaming limit:
 
 ```bash
 python main.py --streaming-limit 120
 ```
 
-Chạy với model STT khác:
+Run with a different STT model:
 
 ```bash
 python main.py --model latest_short
 ```
 
-Kiểm tra danh sách microphone:
+Check the microphone list:
 
 ```bash
 python main.py --list-devices
 ```
 
-Kiểm tra riêng Gemini:
+Test Gemini only:
 
 ```bash
 python test_ttt_only.py
 ```
 
-## Xử lý lỗi thường gặp
+## Troubleshooting
 
-### Lỗi thiếu Gemini API key
+### Missing Gemini API Key
 
-Thông báo có thể giống:
+The message may look like:
 
 ```text
 LLM error: Missing Gemini API key.
 ```
 
-Cách xử lý:
+How to fix it:
 
-- Kiểm tra file `.env` đã có `GEMINI_API_KEY` chưa.
-- Đảm bảo terminal đang chạy ở đúng thư mục dự án.
-- Nếu không dùng `.env`, hãy export biến môi trường trước khi chạy.
+- Check that your `.env` file contains `GEMINI_API_KEY`.
+- Make sure the terminal is running in the correct project directory.
+- If you are not using `.env`, export the environment variable before running the application.
 
-### Lỗi Google Speech-to-Text credentials
+### Google Speech-to-Text Credentials Error
 
-Nếu Google Cloud báo lỗi xác thực, chạy lại:
+If Google Cloud reports an authentication error, run:
 
 ```bash
 gcloud auth application-default login
 ```
 
-Sau đó kiểm tra project:
+Then check the selected project:
 
 ```bash
 gcloud config get-value project
 ```
 
-### Không nghe được microphone
+### Microphone Is Not Detected
 
-Thử liệt kê thiết bị:
+Try listing devices:
 
 ```bash
 python main.py --list-devices
 ```
 
-Sau đó chọn đúng thiết bị:
+Then select the correct device:
 
 ```bash
 python main.py --device-index YOUR_DEVICE_INDEX
 ```
 
-Ngoài ra hãy kiểm tra quyền truy cập microphone của hệ điều hành.
+Also check the operating system microphone permissions.
 
-### PyAudio không cài được
+### PyAudio Cannot Be Installed
 
-Đây thường là lỗi môi trường hệ điều hành, không phải lỗi code. Hãy cài PortAudio hoặc dùng bản Python/PyAudio phù hợp với hệ điều hành của bạn.
+This is usually an operating system environment issue, not a code issue. Install PortAudio or use a Python/PyAudio version that matches your operating system.
 
-### Gemini trả lỗi HTTP
+### Gemini Returns an HTTP Error
 
-Nguyên nhân thường gặp:
+Common causes:
 
-- API key sai hoặc hết quyền.
-- Model trong `GEMINI_MODEL` không hợp lệ.
-- Máy không có kết nối mạng.
-- Request bị giới hạn quota.
+- The API key is incorrect or does not have permission.
+- The model in `GEMINI_MODEL` is invalid.
+- The machine does not have an internet connection.
+- The request is blocked by quota limits.
 
-## Ghi chú bảo mật
+## Security Notes
 
-- Không đưa API key thật vào tài liệu công khai.
-- Không chia sẻ file `.env` có chứa key thật.
-- Nếu key đã bị lộ, hãy thu hồi key cũ và tạo key mới trong Google AI Studio hoặc Google Cloud Console.
+- Do not put real API keys in public documentation.
+- Do not share a `.env` file that contains real keys.
+- If a key has been exposed, revoke the old key and create a new one in Google AI Studio or Google Cloud Console.
 
-## Quy trình khuyến nghị khi sử dụng
+## Recommended Usage Flow
 
-1. Tạo virtual environment.
-2. Cài thư viện bằng `pip install -r requirements.txt`.
-3. Đăng nhập Google Application Default Credentials.
-4. Tạo `.env` và điền cấu hình cần thiết.
-5. Chạy `python main.py --list-devices` để chọn microphone nếu cần.
-6. Chạy `python main.py`.
-7. Nói câu hỏi tiếng Việt vào microphone và đọc câu trả lời trong terminal.
+1. Create a virtual environment.
+2. Install dependencies with `pip install -r requirements.txt`.
+3. Log in to Google Application Default Credentials.
+4. Create `.env` and fill in the required configuration.
+5. Run `python main.py --list-devices` to choose a microphone if needed.
+6. Run `python main.py`.
+7. Speak a Vietnamese question into the microphone and read the response in the terminal.
